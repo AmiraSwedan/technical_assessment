@@ -1,0 +1,285 @@
+---
+title: "the evolution of education for 4- to 5-year-old children"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+produce a Data Perspective on the evolution of education for 4- to 5-year-old children. Particularly interesting for the Perspective is understanding how educational performance evolves month by month at these critical ages, considering both general education and specific subjects (e.g., literature and math, physical education). Methods should be sound and well-argued if necessary.
+
+## Load packages and import dataset
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(kableExtra)
+
+
+df = read.csv("01_rawdata/Zimbabwe_children_under5_interview.csv")
+
+```
+
+```{r}
+
+
+df$age_in_months = interval(df$child_birthday ,df$interview_date)  %/% months(1)
+
+unique(df$age_in_months)
+
+df$age_in_months_cat [df$age_in_months < 41] = 'less than 40 months'
+df$age_in_months_cat [(df$age_in_months >= 41) & (df$age_in_months < 46)] = 'between 41 to 45 months'
+df$age_in_months_cat [(df$age_in_months >= 46) & (df$age_in_months < 51)] = 'between 46 to 50 months'
+df$age_in_months_cat [(df$age_in_months >= 51) & (df$age_in_months < 56)] = 'between 51 to 55 months'
+df$age_in_months_cat [(df$age_in_months >= 56) ] = 'above 56'
+
+df$age_in_months_cat = factor(df$age_in_months_cat , ordered = is.ordered(df$age_in_months_cat) )
+
+levels(df$age_in_months_cat) = c("less than 40 months" , "between 41 to 45 months" ,  "between 46 to 50 months" , "between 51 to 55 months" , "above 56")
+
+kable(table(df$age_in_months_cat) , format = "markdown")
+
+
+```
+
+
+## Evolution of education in Literacy + Math subjects
+
+```{r fig.width=9}
+# EC6: "Can (name) identify or name at least ten letters of the alphabet?" "Yes=1/No=2/DK=8"
+# EC7: "Can (name) read at least four simple, popular words?" "Yes=1/No=2/DK=8"
+# EC8: "Does (name) know the name and recognize the symbol of all numbers from 1 to 10?" "Yes=1/No=2/DK=8"
+
+
+
+
+tab1 = df %>% group_by( age_in_months_cat , EC6) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab1 = tab1 [(tab1$EC6 == 1  | tab1$EC6 ==2),]
+tab1$EC6 [tab1$EC6 ==1] = "Yes"
+tab1$EC6 [tab1$EC6 ==2] = "No"
+tab1 = tab1[!is.na(tab1$age_in_months_cat),]
+kable(tab1 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC6)
+
+ggplot(tab1, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC6)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "Can the child identify or name at least ten letters of the alphabet?" , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+
+#-------------------------------------#
+
+
+tab2 = df %>% group_by( age_in_months_cat , EC7) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab2 = tab2 [(tab2$EC7 == 1  | tab2$EC7 ==2),]
+tab2$EC6 [tab2$EC7 ==1] = "Yes"
+tab2$EC6 [tab2$EC7 ==2] = "No"
+tab2 = tab2[!is.na(tab2$age_in_months_cat),]
+kable(tab2 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC7)
+
+ggplot(tab2, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC7)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "Can the child read at least four simple, popular words?"  , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+
+
+#--------------------------------#
+
+tab3 = df %>% group_by( age_in_months_cat , EC8) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab3 = tab3 [(tab3$EC8 == 1  | tab3$EC8 ==2),]
+tab3$EC8 [tab3$EC8 ==1] = "Yes"
+tab3$EC8 [tab3$EC8 ==2] = "No"
+tab3 = tab3[!is.na(tab3$age_in_months_cat),]
+kable(tab3 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC8)
+
+ggplot(tab3, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC8)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "Does the child know the name and recognize the symbol of all numbers from 1 to 10?"  , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+
+
+```
+
+## Physical capacity 
+
+
+```{r fig.width=9}
+
+
+# EC9: "Can (name) pick up a small object with two fingers, like a stick or a rock from the ground?" "Yes=1/No=2/DK=8"
+# EC10: "Is (name) sometimes too sick to play?" "Yes=1/No=2/DK=8"
+
+
+tab4 = df %>% group_by( age_in_months_cat , EC9) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab4 = tab4 [(tab4$EC9 == 1  | tab4$EC9 ==2),]
+tab4$EC9 [tab4$EC9 ==1] = "Yes"
+tab4$EC9 [tab4$EC9 ==2] = "No"
+tab4 = tab4[!is.na(tab4$age_in_months_cat),]
+kable(tab4 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC9)
+
+ggplot(tab4, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC9)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "Can the child pick up a small object with two fingers, like a stick or a rock from the ground"  , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+
+
+
+#---------------------------------------#
+
+
+tab5 = df %>% group_by( age_in_months_cat , EC10) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab5 = tab5 [(tab5$EC10 == 1  | tab5$EC10 ==2),]
+tab5$EC10 [tab5$EC10 ==1] = "Yes"
+tab5$EC10 [tab5$EC10 ==2] = "No"
+tab5 = tab5[!is.na(tab5$age_in_months_cat),]
+kable(tab5 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC10)
+
+ggplot(tab5, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC10)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "Is (name) sometimes too sick to play?"  , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+
+```
+
+
+## Learning capacity 
+
+```{r fig.width=9}
+tab6 = df %>% group_by( age_in_months_cat , EC11) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab6 = tab6 [(tab6$EC11 == 1  | tab6$EC11 ==2),]
+tab6$EC11 [tab6$EC11 ==1] = "Yes"
+tab6$EC11 [tab6$EC11 ==2] = "No"
+tab6 = tab6[!is.na(tab6$age_in_months_cat),]
+kable(tab6 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC11)
+
+ggplot(tab6, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC11)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "Does the child follow simple directions on how to do something correctly?"  , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+
+#----------------------------------------------#
+
+tab7 = df %>% group_by( age_in_months_cat , EC12) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab7 = tab7 [(tab7$EC12 == 1  | tab7$EC12 ==2),]
+tab7$EC12 [tab7$EC12 ==1] = "Yes"
+tab7$EC12 [tab7$EC12 ==2] = "No"
+tab7 = tab7[!is.na(tab7$age_in_months_cat),]
+kable(tab7 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC12)
+
+ggplot(tab7, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC12)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "When given something to do, is the child able to do it independently"  , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+```
+
+
+
+## Socio-emotional skills
+
+```{r fig.width=9}
+
+tab8 = df %>% group_by( age_in_months_cat , EC13) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab8 = tab8 [(tab8$EC13 == 1  | tab8$EC13 ==2),]
+tab8$EC13 [tab8$EC13 ==1] = "Yes"
+tab8$EC13 [tab8$EC13 ==2] = "No"
+tab8 = tab8[!is.na(tab8$age_in_months_cat),]
+kable(tab8 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC13)
+
+ggplot(tab8, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC13)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "Does the child get along well with other children?"  , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+
+#--------------------------------------#
+
+tab9 = df %>% group_by( age_in_months_cat , EC14) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab9 = tab9 [(tab9$EC14 == 1  | tab9$EC14 ==2),]
+tab9$EC14 [tab9$EC14 ==1] = "Yes"
+tab9$EC14 [tab9$EC14 ==2] = "No"
+tab9 = tab9[!is.na(tab9$age_in_months_cat),]
+kable(tab9 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC14)
+
+ggplot(tab9, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC14)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "Does the child kick, bite, or hit other children or adults?"  , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+
+
+#--------------------------------------------#
+
+
+tab10 = df %>% group_by( age_in_months_cat , EC15) %>% summarise(n = n() ) %>% dplyr::mutate(perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"))
+
+tab10 = tab10 [(tab10$EC15 == 1  | tab10$EC15 ==2),]
+tab10$EC15 [tab10$EC15 ==1] = "Yes"
+tab10$EC15 [tab10$EC15 ==2] = "No"
+tab10 = tab10[!is.na(tab10$age_in_months_cat),]
+kable(tab10 , format = "markdown")
+
+chisq.test(df$age_in_months_cat , df$EC15)
+
+ggplot(tab10, aes(x = age_in_months_cat, y = perc, fill = as.factor (EC15)))+
+geom_bar(stat = "identity", position=position_dodge(.9) , width = 0.6) +
+geom_text(aes(label = perc), vjust = 1.5, colour = "black" , size = 3, position=position_dodge(.9))+ #text labels
+labs(x = "Child age in month", y = "Percentage", 
+title = "Does the child get distracted easily"  , fill = "") +
+scale_fill_manual(values = c("darkcyan", "azure3"), 
+                    labels = c("Yes", "No")) +   theme(legend.position = "top" , plot.title = element_text(size = 9)) 
+
+
+```
+

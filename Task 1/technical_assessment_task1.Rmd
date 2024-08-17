@@ -1,0 +1,152 @@
+---
+title: "2023 under-5 mortality targets"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Your task is to calculate population-weighted coverage of health services (antenatal care and skilled birth attendance) for countries categorized as on-track and off-track in achieving under-5 mortality targets as of 2023.
+
+## Load packages and read datasets
+
+
+```{r read data, message=FALSE, warning=FALSE}
+
+library(tidyverse) 
+library(readxl)
+library(kableExtra)
+
+df_1 = read_excel("01_rawdata/GLOBAL_DATAFLOW_2018-2022.xlsx")
+## this dataset includes the ANC4 and SAB indicators
+df_2 = read_excel("01_rawdata/WPP2022_GEN_F01_DEMOGRAPHIC_INDICATORS_COMPACT_REV1.xlsx" , sheet = 2 )
+## This dataset includes the projected births
+df_3 = read_excel("01_rawdata/On-track and off-track countries.xlsx")
+## This dataset includes the countries classification (In/off track)
+
+
+
+```
+
+## 1. Data prep
+
+
+1. selecting key variables and filtering the datasets
+2. renaming and standardizing the variables names
+3. replace missing value of pop size with the most recent reported
+4. data type conversion
+5. merging all datasets in one data source
+
+
+
+```{r message=FALSE, warning=FALSE}
+#### df_1
+
+#names(df_1)
+#unique(df_1$`Geographic area`)
+#unique(df_1$TIME_PERIOD)
+df_1 = df_1 %>% select (`Geographic area` , Indicator, TIME_PERIOD , OBS_VALUE) ## select variables of interest
+
+## Rename the variables of interest
+df_1 = df_1 %>% rename(Country = `Geographic area`, Year = TIME_PERIOD)
+kable( str(df_1) , format = "markdown" )
+df_1$Year = as.numeric(df_1$Year) ## convert the data type into numeric
+df_1$OBS_VALUE = as.numeric(df_1$OBS_VALUE)
+
+## Lower the letters of the country names ( except the first letter)
+df_1$Country = str_to_title(df_1$Country)
+df_1$Country = trimws(df_1$Country) ## remove white spaces
+
+###df_2
+#names(df_2)
+
+
+## select  2022 projections
+
+df_2 = df_2 [df_2$Year == 2022,]
+
+
+
+## rename variables
+df_2 =df_2 %>%  rename(Country =  `Region, subregion, country or area *` , Births =  `Births (thousands)`) 
+df_2 = df_2 %>% select(Country , Projected_births = Births)
+
+kable(str(df_2) , format = "markdown")
+df_2$Projected_births = as.numeric(df_2$Projected_births) ## convert to numeric
+df_2 = df_2 [! is.na(df_2$Country) ,]
+df_2$Country [df_2$Country == "Asia And The Pacific"] = "Asia"
+
+## Lower the letters of the country names ( except the first letter)
+df_2$Country = str_to_title(df_2$Country)
+df_2$Country = trimws(df_2$Country) ## remove white spaces
+
+
+
+## merge df_1 with df_2
+df_all = df_1 %>% full_join(df_2 , by = c('Country' ))
+
+
+
+## df_3
+#names(df_3)
+
+df_3 = df_3 %>% rename( Country = OfficialName) ## Rename
+
+df_all = df_all %>% full_join(df_3 , by = "Country") ## merge with dataset 
+kable (str(df_all) , format = "markdown")
+
+df_all$Projected_births = as.numeric(df_all$Projected_births)
+
+df_all = df_all [! is.na(df_all$Status.U5MR) ,] ## remove cases where status is not reported
+df_all = df_all [! is.na(df_all$OBS_VALUE) , ]
+
+
+## filter for only the most recent estimate for each indicator
+
+df_all = df_all %>%
+    group_by(Country , Indicator) %>% 
+    arrange(desc(Year)) %>% 
+    slice(1)
+
+## Export the final dataset 
+writexl::write_xlsx(df_all , 'datasets_cleaned_merged.xlsx')
+
+```
+
+## 2. Calculate weighted averages for on-track and off-track countries
+```{r message=FALSE, warning=FALSE}
+
+
+
+summary_tbl = df_all %>% group_by(Status.U5MR , Indicator) %>% summarise(weighted_avg = sum(OBS_VALUE * Projected_births , na.rm = T) / sum(Projected_births , na.rm = T) )
+
+summary_tbl$Indicator [summary_tbl$Indicator == "Antenatal care 4+ visits - percentage of women (aged 15-49 years) attended at least four times during pregnancy by any provider"] = "ANC4"
+
+summary_tbl$Indicator [summary_tbl$Indicator == "Skilled birth attendant - percentage of deliveries attended by skilled health personnel"] = "SAB"
+
+kable(summary_tbl , format =  "markdown")
+
+#Create a visualization of your choice comparing population-weighted coverage estimates for on-track and off-track countries for each indicator, with a short paragraph on interpretation and caveats.
+
+
+# Create the bar chart
+ggplot(summary_tbl, aes(x = Indicator, y = weighted_avg, fill = Status.U5MR)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Average Indicator Values by Status",
+    x = "Indicator",
+    y = "Average Value",
+    fill = "Status"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+  
+
+```
+
+This graph demonstrates that countries that have achieved the targets of mortality rate among children below 5 years tend to have higher percentages of at least 4 antenatal care visits and higher percentages of deliveries attended by skilled health personnel. This suggests that improving access to antenatal care and skilled birth attendance may be crucial factors in reducing under-5 mortality rates.
+
+Caveat: Not all countries reported recent values of the two indicators. [The data points shown may not represent the most current situation in each country.]
